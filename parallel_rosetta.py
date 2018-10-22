@@ -7,7 +7,13 @@ from joblib import Parallel,delayed
 from joblib.pool import has_shareable_memory
 
 #---This code can be used several different ways. Choose one or more of the following options.
-MODE = ['EXTRACT', 'ANALYZE'] # ABINITIO, EXTRACT, ANALYZE, DEBUG
+MODE = ['ANALYZE'] # ABINITIO, EXTRACT, ANALYZE, DEBUG
+
+PATH = '/home/dillion/data/reflectin/structure_prediction/rosetta/N-term/'
+FASTA   = PATH+'t000_.fasta.txt'
+FRAG3   = PATH+'aat000_03_05.200_v1_3.txt'
+FRAG9   = PATH+'aat000_09_05.200_v1_3.txt'
+PSIPRED = PATH+'t000_.psipred_ss2.txt'
 
 #---ABINITIO options
 global total_structures ; total_structures = 50000
@@ -35,17 +41,17 @@ def run_abinitio(d):
 	except:
 		print dir, "already exists!"
 	os.chdir(dir)
-	shutil.copy2('/home/dillion/Dropbox/Reflectin/structure_prediction/rosetta/2_8/00/rob_motif2_8.fasta',               dir+'rob_motif2_8.fasta')
-	shutil.copy2('/home/dillion/Dropbox/Reflectin/structure_prediction/rosetta/2_8/00/rob_motif2_8.frag-03_05.200_v1_3', dir+'rob_motif2_8.frag-03_05.200_v1_3')
-	shutil.copy2('/home/dillion/Dropbox/Reflectin/structure_prediction/rosetta/2_8/00/rob_motif2_8.frag-09_05.200_v1_3', dir+'rob_motif2_8.frag-09_05.200_v1_3')
-	shutil.copy2('/home/dillion/Dropbox/Reflectin/structure_prediction/rosetta/2_8/00/rob_motif2_8.psipred_ss2',         dir+'rob_motif2_8.psipred_ss2')
+	shutil.copy2(FASTA, dir+'rob_motif.fasta')
+	shutil.copy2(FRAG3, dir+'rob_motif.frag-03_05.200_v1_3')
+	shutil.copy2(FRAG9, dir+'rob_motif.frag-09_05.200_v1_3')
+	shutil.copy2(PSIPRED, dir+'rob_motif.psipred_ss2')
 	rand = random.randint(1,10000000)
 
 	FNULL = open(os.devnull, 'w')
 	subprocess.call(['AbinitioRelax', \
-		'-in::file::fasta rob_motif2_8.fasta', \
-		'-in:file:frag3 rob_motif2_8.frag-03_05.200_v1_3', \
-		'-in:file:frag9 rob_motif2_8.frag-09_05.200_v1_3', \
+		'-in::file::fasta rob_motif.fasta', \
+		'-in:file:frag3 rob_motif.frag-03_05.200_v1_3', \
+		'-in:file:frag9 rob_motif.frag-09_05.200_v1_3', \
 		'-abinitio:relax', \
 		'-constant_seed', \
 		'-jran ', str(rand), \
@@ -83,6 +89,10 @@ def run_extract(n):
 		os.mkdir(pdb_dir)
 	except:
 		print "pdbs/ already exists"
+	try:
+		os.mkdir(dir+"pdbs/")
+	except:
+		print dir+"pdbs/ already exists"
 	FNULL = open(os.devnull, 'w')
 	subprocess.call(['extract_pdbs', '-in::file::silent', dir+'fast_relax_1.out', '-out::prefix', dir+'pdbs/ref'], stdout=FNULL, stderr=subprocess.STDOUT)
 	for i in range(1,5001):
@@ -125,8 +135,8 @@ def make_PDB_list():
 	return None
 
 #---run the structure_analysis.py's "sa" class with some task
-def analyze(task):
-	import structure_analysis as sa
+def analyze(task,mode):
+	import sa
 	PDB_list = pdb_dir+"PDB_list.txt"
 	try:
 		os.mkdir(analysis_dir)
@@ -135,7 +145,10 @@ def analyze(task):
 	analysis = sa.SA(PDB_list,'','',analysis_dir,task)
 	analysis.ros_frames = 500
 	analysis.score_file = score_file
-	analysis.run('score')
+	if mode == 'score':
+		analysis.run(mode)
+	else:
+		analysis.run()
 	return None
 
 if __name__ == "__main__":
@@ -149,7 +162,7 @@ if __name__ == "__main__":
 		make_PDB_list()
 
 	elif 'ANALYZE' in MODE:
-		analyze(['PCA','cmaps','surface_contacts','flory','chain','SS'])
+		analyze(['PCA','cmaps','surface_contacts','flory','chain','SS'],'')
 
 	elif 'DEBUG' in MODE:
 		combine_scorefiles()
